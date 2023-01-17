@@ -38,9 +38,17 @@ in PATH, for example in `/usr/local/bin` or `$HOME/bin`.
 
 Xx relies in a symlink from a `bin/` directory. Suppose that multiple
 versions of Python are installed at `/usr/local/python/versions`, and
-xx is installed at `/usr/local/python/versions/bin`:
+xx is installed at `/usr/local/python/bin`:
 ```
 % cd /usr/local/python/version/bin
+
+% cat >xx <<EOF
+#!/bin/sh
+exec /usr/local/python/bin/xx "${0##*/}" PYENV_VERSION PYXX_VERSION -- "$@"
+EOF
+
+% chmod a+rx xx
+
 % ln -s $PWD/xx /usr/local/python/bin/python
 % ln -s $PWD/xx /usr/local/python/bin/xx
 ```
@@ -95,5 +103,5 @@ Using the Python use case as an example:
 To install xx in `/usr/local/python/versions/bin`:
 ```
 cd "$(git rev-parse --show-toplevel)" &&
-  cp bin/llxx bin/xx /usr/local/python/versions/bin/
+  cp bin/xx /usr/local/python/bin/
 ```
