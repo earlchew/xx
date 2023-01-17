@@ -93,6 +93,18 @@ whichother()
     [ -n "$CMD" ]
 }
 
+exe()
+{
+    local EXE=$1 ; shift
+
+    local DIR=${EXE%/*}
+    [ -z "${EXE##/*}" ] || DIRNAME=$PWD
+
+    DIR=$(cd -- "$DIR" && pwd -P)
+
+    say "$DIR/${EXE##*/}"
+}
+
 cmd()
 {
     local VERSION
@@ -130,7 +142,11 @@ cmd()
 
 main()
 {
-    local COMMAND=$1 ; shift
+    [ -z "${XX_DEBUG++}" ] || set -x
+
+    [ $# -ge 2 ] || usage
+
+    local COMMAND ; COMMAND=$(exe "$1") ; shift
     local SELECTOR=$1 ; shift
     local ALTERNATE
 
