@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ -z "${PHPXX_DEBUG++}" ] || { export XX_DEBUG=1 ; set -x ; }
+
+exec "$(
+    set -- "$(readlink -f "$0")"
+    printf '%s' "${1%/*/*}/bin/xx"
+)" "$0" PHPENV_VERSION PHPXX_VERSION -- "$@"
