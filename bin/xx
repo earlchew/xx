@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+
+[ -z "${0##/*}" ] || exec "$PWD/$0" "$@"
+
+set -eu
+
+# Run specific language version
+#
+# This script is a lightweight replacement for shims to avoid
+# taking a dependency on pyenv, rbenv, etc, to support local builds.
+
+say()
+{
+    printf '%s\n' "$*"
+}
+
+die()
+{
+    say "${COMMAND##*/}: $*" >&2
+    exit 1
+}
+
+usage()
+{
+    say "usage: ${0##*/} command version [alternate] -- [arg ...]" >&2
+    exit 1
+}
+
+xx_die()
+{
+    say "${0##*/}: $*" >&2
+    exit 1
+}
+
+xx_usage()
+{
+    say "usage: ${0##*/} { root | versions }" >&2
+    exit 1
+}
+
+xx_root()
+{
+    [ $# -eq 0 ] || pyxx_usage
+
+    (
+        cd "$XX_DIR"
+        say "$PWD"
+    )
+}
+
+xx_versions()
+{
+    [ $# -eq 0 ] || pyxx_usage
+
+    (
+        cd "$XX_DIR"
+        ls -1d [1-9]*
+    )
+}
+
+xx()
+{
+    [ $# -lt 1 ] || [ x"$1" != x"--debug" ] || { set -x ; shift ; }
+    [ $# -ge 1 ] || xx_usage
+
+    local XX_CMD=$1
+    shift
+
+    case "$XX_CMD" in
+    root)
+        xx_root "$@"
+        ;;
+    versions)
+        xx_versions "$@"
+        ;;
+    *)
+        xx_usage
+        ;;
+    esac
+}
+
+whichother()
+{
+    local CMD=
+
+    while [ $# -gt 1 ] ; do
+        CMD="$2/${1##*/}"
+        [ "$1" = "$CMD" -o ! -x "$CMD" ] || { say "$CMD" ; break ; }
+        CMD=
+        set -- "$1" "${@:3}"
+    done
+
+    [ -n "$CMD" ]
+}
+
+cmd()
+{
+    local VERSION
+
+    if eval [ -n '"${'"$SELECTOR"'++}"' ] ; then
+        eval VERSION='$'"$SELECTOR"
+    elif [ -n "${ALTERNATE++}" ] ; then
+        if eval [ -n '"${'"$ALTERNATE"'++}"' ] ; then
+            eval VERSION='$'"$ALTERNATE"
+        fi
+    fi
+
+    # If no version was selected, find the version installed
+    # as part of the system.
+
+    if [ -z "${VERSION++}" ] ; then
+
+        set -- "$(whichother "$COMMAND" ${PATH//:/ })" "$@"
+        [ -n "$1" ] ||
+            die "Unable to find ${0##*/} via $SELECTOR, $ALTERNATE, or PATH"
+
+    else
+
+        local VERSIONDIR=$XX_DIR/$VERSION
+
+        [ -d "${VERSIONDIR}" ] ||
+            die "Unable to find version directory $VERSION in $XX_DIR"
+
+        set -- "$VERSIONDIR/bin/${COMMAND##*/}" "$@"
+    fi
+
+    : "$@"
+    exec "$@"
+}
+
+main()
+{
+    local COMMAND=$1 ; shift
+    local SELECTOR=$1 ; shift
+    local ALTERNATE
+
+    [ $# -lt 2 ] || [ x"$1" = x"--" ] || { ALTERNATE=$1 ; shift ; }
+
+    [ $# -ge 1 ] || usage
+    [ x"$1" = x"--" ] || usage
+    shift
+
+    local ARG0
+    if [ -h "$0" ] ; then
+        ARG0=$(readlink -f "$0")
+    else
+        ARG0=$0
+    fi
+
+    local XX_DIR=$ARG0
+    XX_DIR=${XX_DIR%/*}
+    XX_DIR=$(cd "$XX_DIR" && pwd -P)
+    XX_DIR=${XX_DIR%/*}
+
+    if [ x"${COMMAND##*/}" = x"xx" ] ; then
+        set -- xx "$@"
+    else
+        set -- cmd "$@"
+    fi
+
+    "$@"
+}
+
+main "$@"
